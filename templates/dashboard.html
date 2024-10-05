@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Личный кабинет
+{% endblock %}
+
+{% block body %}
+<h1>Добро пожаловать, {{ username }}</h1>
+{% if fines > 0 %}
+    <p>Ваш штраф: {{ fines }} руб.</p>
+{% endif %}
+
+<h2>Проверка наличия книги</h2>
+<form method="POST" action="{{ url_for('check_book') }}">
+    <input type="text" name="title" placeholder="Название книги" required>
+    <button type="submit">Проверить</button>
+</form>
+
+<script type="application/json" id="flash-messages">
+    {{ get_flashed_messages() | tojson }}
+</script>
+<!--{% with messages = get_flashed_messages() %}-->
+<!--    {% if messages %}-->
+<!--        <ul>-->
+<!--            {% for message in messages %}-->
+<!--                <li>{{ message }}</li>-->
+<!--            {% endfor %}-->
+<!--        </ul>-->
+<!--    {% endif %}-->
+<!--{% endwith %}-->
+
+<h2>Все книги</h2>
+<ul>
+    {% for book in books %}
+        <li>{{ book.title }} - {{ "Доступна" if book.available else "Не доступна" }}</li>
+    {% endfor %}
+</ul>
+
+{% if is_admin %}
+    <h1>Админ панель</h1>
+    <h2>Добавить книгу</h2>
+    <form method="POST" action="{{ url_for('add_book') }}">
+        <input type="text" name="title" placeholder="Название книги" required>
+        <input type="text" name="author" placeholder="Автор" required>
+        <button type="submit">Добавить книгу</button>
+    </form>
+
+    <h2>Удалить книгу</h2>
+    <form method="POST" action="{{ url_for('delete_book') }}">
+        <input type="text" name="title" placeholder="Название книги" required>
+        <button type="submit">Удалить книгу</button>
+    </form>
+{% endif %}
+
+<a href="{{ url_for('logout') }}"><button>Выйти</button></a>
+
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Главная страница
+{% endblock %}
+
+{% block body %}
+<h1>Добро пожаловать в библиотеку!</h1>
+<a href="{{ url_for('login') }}"><button>Вход</button></a>
+{% endblock %}
