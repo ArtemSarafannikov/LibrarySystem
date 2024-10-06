@@ -16,6 +16,22 @@
     <button type="submit">Проверить</button>
 </form>
 
+<h2>Книги за вами</h2>
+{% if user_books|length == 0 %}
+    <p>За вами не закреплены никакие книги</p>
+{% else %}
+    <ul>
+        {% for i in range(user_books|length) %}
+            <li>{{ user_books[i].book.title }} - {{ user_books[i].book.author }}
+                {% if due_days[i] < 0 %}
+                    (Просрочено на <font color="red"><b>{{ -due_days[i] }} дней</b></font>)
+                {% else %}
+                    (Осталось <b>{{ due_days[i] }} дней до сдачи</b>)</li>
+                {% endif %}
+        {% endfor %}
+    </ul>
+{% endif %}
+
 <script type="application/json" id="flash-messages">
     {{ get_flashed_messages() | tojson }}
 </script>
@@ -38,6 +54,19 @@
 
 {% if is_admin %}
     <h1>Админ панель</h1>
+    <h2>Выдать книгу</h2>
+    <form method="POST" action="{{ url_for('issue_book') }}">
+        <input type="text" name="title" placeholder="Название книги" required>
+        <input type="text" name="username" placeholder="Логин пользователя" required>
+        <button type="submit">Выдать книгу</button>
+    </form>
+
+    <h2>Возврат книги</h2>
+    <form method="POST" action="{{ url_for('return_book') }}">
+        <input type="number" name="book_id" placeholder="ID книги" required>
+        <button type="submit">Вернуть книгу</button>
+    </form>
+
     <h2>Добавить книгу</h2>
     <form method="POST" action="{{ url_for('add_book') }}">
         <input type="text" name="title" placeholder="Название книги" required>

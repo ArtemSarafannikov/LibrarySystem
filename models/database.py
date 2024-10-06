@@ -1,5 +1,6 @@
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 
 db = SQLAlchemy()
@@ -18,3 +19,15 @@ class LDatabase:
         title = db.Column(db.String(100), nullable=False)
         author = db.Column(db.String(100), nullable=False)
         available = db.Column(db.Boolean, default=True)
+        due_days = db.Column(db.Integer, nullable=False, default=7)
+
+    class UsersBooks(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        issue_date = db.Column(db.DateTime, default=datetime.utcnow)
+        return_date = db.Column(db.DateTime)
+
+        book = db.relationship('Books', backref=db.backref('issued_to', lazy=True))
+        user = db.relationship('Users', backref=db.backref('issued_books', lazy=True))
+
