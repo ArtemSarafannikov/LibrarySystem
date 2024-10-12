@@ -22,7 +22,7 @@ def check_fines(user_id: int) -> (float, list):
     due_days = []
     fines = 0.0
     for ub in user_books:
-        days = (ub.issue_date + timedelta(days=ub.book.due_days) - date.today()).days
+        days = (ub.deadline_date - date.today()).days
         if days < 0:
             fines += abs(days) * FINES_PER_DAY
         due_days.append(days)
@@ -70,15 +70,22 @@ def dashboard():
     user_books = LDatabase.UsersBooks.query.filter_by(user_id=current_user.id,
                                                       return_date=None).all()
 
-    _, due_days = update_fines(current_user.id)
+    now = date.today()
+    reserved_books = (LDatabase.Reservation.query.join(LDatabase.Books).
+                      filter((LDatabase.Reservation.user_id == current_user.id) &
+                             (LDatabase.Reservation.expiration_date >= now) &
+                             (LDatabase.Books.available)).all())
 
+    _, due_days = update_fines(current_user.id)
     return render_template('dashboard.html',
                            username=current_user.username,
                            books=books,
                            fines=current_user.fines,
                            is_admin=current_user.is_admin,
                            user_books=user_books,
-                           due_days=due_days)
+                           due_days=due_days,
+                           now_date=now,
+                           reserved_books=reserved_books)
 
 
 @app.route('/check_book', methods=['POST'])
@@ -155,8 +162,22 @@ def issue_book():
         flash('Пользователь не найден')
         return redirect(url_for('dashboard'))
 
+    now = datetime.utcnow()
+    reservation = (LDatabase.Reservation.query.filter_by(book_id=book.id)
+                 .filter((LDatabase.Reservation.expiration_date >= now) & (LDatabase.Reservation.user_id != user.id))).first()
+    if reservation:
+        flash(f"Книга забронирована пользователем {reservation.user.username}")
+        return redirect(url_for('dashboard'))
+
+    if user.fines >= 5000:
+        flash(f"Штраф пользователя составляет {user.fines}. Он не может брать книги, пока его не оплатит")
+        return redirect(url_for('dashboard'))
+
     book.available = False
-    issued_book = LDatabase.UsersBooks(book_id=book.id, user_id=user.id)
+    deadline = request.form['due_days']
+    issued_book = LDatabase.UsersBooks(book_id=book.id,
+                                       user_id=user.id,
+                                       deadline_date=datetime.now() + timedelta(days=int(deadline)))
     db.session.add(issued_book)
     db.session.commit()
 
@@ -192,17 +213,54 @@ def return_book():
     return redirect(url_for('dashboard'))
 
 
-# TODO: Возможность пользователю бронировать книгу
+@app.route('/reserve_book', methods=['POST'])
+@login_required
+def reserve_book():
+    book_id = request.form['book_id']
+    book = LDatabase.Books.query.get(book_id)
 
-# TODO: Продление срока сдачи книжки
+    if not book.available:
+        flash('Книга недоступна')
+        return redirect(url_for('dashboard'))
 
-# TODO: Запретить выдачу, если есть штраф больше 5000
+    now = datetime.utcnow()
+    exist = (LDatabase.Reservation.query.filter_by(book_id=book.id)
+           .filter(LDatabase.Reservation.expiration_date >= now)).first()
+    if exist:
+        flash("Книга уже забронирована")
+        return redirect(url_for('dashboard'))
+
+    reservation = LDatabase.Reservation(book_id=book.id, user_id=current_user.id)
+    db.session.add(reservation)
+    db.session.commit()
+
+    flash(f"Книга {book.title} успешно забронирована вами. Заберите её до {reservation.expiration_date}")
+    return redirect(url_for('dashboard'))
+
+@app.route('/cancel_reserve', methods=['POST'])
+@login_required
+def cancel_reserve():
+    reservation_id = request.form['reservation_id']
+    reservation = LDatabase.Reservation.query.get(reservation_id)
+
+    db.session.delete(reservation)
+    db.session.commit()
+    flash("Бронь успешно отменена")
+    return redirect(url_for('dashboard'))
+
+
+# TODO: Написать комментарии
+
+# TODO: Поиск через индексирование
+
+# TODO: Добавить возможность админу просмотра страницу пользователя и книжки (вместе с этим возможность менять срок сдачи т. д.)
 
 # TODO: Общая статистика (общая задолженность, сколько книг на руках и т.д.)
 
-# TODO: Поиск книги через индексирование
-
 # TODO: Сделать взаимодействие с книгами через QR код (http://qrcoder.ru)
+
+# TODO: Поменять взаимодействие с книгами на более практичный (не по названию)
+
 
 
 if __name__ == '__main__':

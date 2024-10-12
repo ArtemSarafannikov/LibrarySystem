@@ -31,6 +31,21 @@
         {% endfor %}
     </ul>
 {% endif %}
+<h2>Забронированные книги</h2>
+{% if reserved_books|length == 0 %}
+    <p>Вы не бронировали книг</p>
+{% else %}
+    <ul>
+        {% for reserved_book in reserved_books %}
+            <li><b>{{ reserved_book.book.title }} - {{ reserved_book.author }}</b> забронирована до {{ reserved_book.expiration_date}} (Осталось {{ (reserved_book.expiration_date - now_date).days }} дня)
+                <form method="POST" action="{{ url_for('cancel_reserve') }}">
+                <input type="hidden" name=reservation_id value="{{ reserved_book.id }}">
+                <button type="submit">Отменить бронь</button>
+            </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
 
 <script type="application/json" id="flash-messages">
     {{ get_flashed_messages() | tojson }}
@@ -48,7 +63,17 @@
 <h2>Все книги</h2>
 <ul>
     {% for book in books %}
-        <li>{{ book.title }} - {{ "Доступна" if book.available else "Не доступна" }}</li>
+        <li>{{ book.title }} -
+            {% if book.available %}
+                Доступна
+            <form method="POST" action="{{ url_for('reserve_book') }}">
+                <input type="hidden" name=book_id value="{{ book.id }}">
+                <button type="submit">Забронировать</button>
+            </form>
+            {% else %}
+                Недоступна
+            {% endif %}
+        </li>
     {% endfor %}
 </ul>
 
@@ -58,6 +83,7 @@
     <form method="POST" action="{{ url_for('issue_book') }}">
         <input type="text" name="title" placeholder="Название книги" required>
         <input type="text" name="username" placeholder="Логин пользователя" required>
+        <input type="number" name="due_days" placeholder="Количество дней на чтение" value="7" required>
         <button type="submit">Выдать книгу</button>
     </form>
 

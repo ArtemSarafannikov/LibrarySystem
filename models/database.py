@@ -1,6 +1,6 @@
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 db = SQLAlchemy()
@@ -21,12 +21,23 @@ class LDatabase:
         available = db.Column(db.Boolean, default=True)
         due_days = db.Column(db.Integer, nullable=False, default=7)
 
+    class Reservation(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        reservation_date = db.Column(db.DateTime, default=datetime.utcnow)
+        expiration_date = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(days=2))
+
+        book = db.relationship('Books', backref=db.backref('reserved_to', lazy=True))
+        user = db.relationship('Users', backref=db.backref('reserved_books', lazy=True))
+
     class UsersBooks(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
         issue_date = db.Column(db.DateTime, default=datetime.utcnow)
         return_date = db.Column(db.DateTime)
+        deadline_date = db.Column(db.DateTime, nullable=False)
 
         book = db.relationship('Books', backref=db.backref('issued_to', lazy=True))
         user = db.relationship('Users', backref=db.backref('issued_books', lazy=True))
