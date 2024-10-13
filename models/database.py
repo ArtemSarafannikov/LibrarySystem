@@ -21,6 +21,7 @@ class LDatabase:
         available = db.Column(db.Boolean, default=True)
         due_days = db.Column(db.Integer, nullable=False, default=7)
 
+
     class Reservation(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
@@ -41,4 +42,3 @@ class LDatabase:
 
         book = db.relationship('Books', backref=db.backref('issued_to', lazy=True))
         user = db.relationship('Users', backref=db.backref('issued_books', lazy=True))
-

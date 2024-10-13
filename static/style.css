@@ -22,6 +22,11 @@ button:hover {
     background-color: #b9b33d;
 }
 
+button:disabled {
+    background-color: #000000;
+    cursor: not-allowed;
+}
+
 h1, h2 {
     color: #333;
 }

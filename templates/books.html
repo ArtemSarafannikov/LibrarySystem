@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Каталог книг
+{% endblock %}
+
+{% block body %}
+<h2>Список книг</h2>
+
+<form method="GET" action="{{ url_for('books') }}">
+    <input type="text" name="q" placeholder="Название книги" value="{{ query }}">
+    <button type="submit">Поиск</button>
+</form>
+
+<ul>
+    {% for book in books %}
+        <li>{{ book.title }} - {{ book.author }} <b>(
+            {% if book.available %}
+                Доступна )
+            <form method="POST" action="{{ url_for('reserve_book') }}">
+                <input type="hidden" name=book_id value="{{ book.id }}">
+                <button type="submit">Забронировать</button>
+            </form>
+            {% else %}
+                Недоступна )
+            {% endif %}
+            </b>
+        </li>
+    {% endfor %}
+    <div>
+
+        <form method="GET" action="{{ url_for('books') }}">
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="hidden" name="page" value="{{ page - 1 }}">
+            <button type="submit" {% if page <= 1 %} disabled {% endif %}>Назад</button>
+        </form>
+        <form method="GET" action="{{ url_for('books') }}">
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="hidden" name="page" value="{{ page + 1 }}">
+            <button type="submit" {% if num_of_pages <= page %} disabled {% endif %}>Вперед</button>
+        </form>
+    </div>
+</ul>
+{% endblock %}

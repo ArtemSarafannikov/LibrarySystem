@@ -10,12 +10,6 @@
     <p>Ваш штраф: {{ fines }} руб.</p>
 {% endif %}
 
-<h2>Проверка наличия книги</h2>
-<form method="POST" action="{{ url_for('check_book') }}">
-    <input type="text" name="title" placeholder="Название книги" required>
-    <button type="submit">Проверить</button>
-</form>
-
 <h2>Книги за вами</h2>
 {% if user_books|length == 0 %}
     <p>За вами не закреплены никакие книги</p>
@@ -59,23 +53,6 @@
 <!--        </ul>-->
 <!--    {% endif %}-->
 <!--{% endwith %}-->
-
-<h2>Все книги</h2>
-<ul>
-    {% for book in books %}
-        <li>{{ book.title }} -
-            {% if book.available %}
-                Доступна
-            <form method="POST" action="{{ url_for('reserve_book') }}">
-                <input type="hidden" name=book_id value="{{ book.id }}">
-                <button type="submit">Забронировать</button>
-            </form>
-            {% else %}
-                Недоступна
-            {% endif %}
-        </li>
-    {% endfor %}
-</ul>
 
 {% if is_admin %}
     <h1>Админ панель</h1>

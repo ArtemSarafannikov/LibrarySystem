@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, LoginManager, login_required, login_user, current_user
+from sqlalchemy import text
 from models.database import db, LDatabase
+from models import BookModel
 from datetime import datetime, date, timedelta
-
+from math import ceil
 
 FINES_PER_DAY = 100
+ELEMENTS_PER_PAGE = 10
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'library_system_12354'
@@ -63,10 +66,52 @@ def login():
     return render_template('login.html')
 
 
-@app.route('/dashboard')
+@app.route('/books', methods=['GET'])
+def books():
+    query = request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
+    pages = 1
+    if not query:
+        books = (LDatabase.Books.query.order_by(LDatabase.Books.available.desc(), LDatabase.Books.title)
+                 .paginate(page=page, per_page=ELEMENTS_PER_PAGE, error_out=False))
+        pages = ceil(LDatabase.Books.query.count() / ELEMENTS_PER_PAGE)
+        print(LDatabase.Books.query.count(), pages)
+    else:
+        sql_query = text(
+            '''
+            SELECT *,
+                   ts_rank(to_tsvector('russian', title || ' ' || author), to_tsquery('russian', :query)) AS rank,
+                   similarity(title, :query) AS sml
+            FROM books
+            WHERE to_tsvector('russian', title || ' ' || author) @@ to_tsquery('russian', :query) OR title % :query
+            ORDER BY rank desc, sml desc
+            LIMIT :elems_per_page
+            OFFSET :offset
+            '''
+        )
+        result = db.session.execute(sql_query, {'query': query.replace(' ', '_'),
+                                                'elems_per_page': ELEMENTS_PER_PAGE,
+                                                'offset': ELEMENTS_PER_PAGE * (page - 1)})
+        books = []
+        for record in result:
+            books.append(BookModel.Book(id=str(record[0]),
+                                        title=record[1],
+                                        author=record[2],
+                                        available=str(record[3]),
+                                        due_days=str(record[4])))
+
+        pages = ceil(len(books) / ELEMENTS_PER_PAGE)
+
+    return render_template('books.html',
+                           books=books,
+                           query=query,
+                           page=page,
+                           num_of_pages=pages)
+
+
+@app.route('/lk')
 @login_required
 def dashboard():
-    books = LDatabase.Books.query.all()
     user_books = LDatabase.UsersBooks.query.filter_by(user_id=current_user.id,
                                                       return_date=None).all()
 
@@ -79,7 +124,6 @@ def dashboard():
     _, due_days = update_fines(current_user.id)
     return render_template('dashboard.html',
                            username=current_user.username,
-                           books=books,
                            fines=current_user.fines,
                            is_admin=current_user.is_admin,
                            user_books=user_books,
@@ -164,7 +208,8 @@ def issue_book():
 
     now = datetime.utcnow()
     reservation = (LDatabase.Reservation.query.filter_by(book_id=book.id)
-                 .filter((LDatabase.Reservation.expiration_date >= now) & (LDatabase.Reservation.user_id != user.id))).first()
+                   .filter(
+        (LDatabase.Reservation.expiration_date >= now) & (LDatabase.Reservation.user_id != user.id))).first()
     if reservation:
         flash(f"Книга забронирована пользователем {reservation.user.username}")
         return redirect(url_for('dashboard'))
@@ -225,7 +270,7 @@ def reserve_book():
 
     now = datetime.utcnow()
     exist = (LDatabase.Reservation.query.filter_by(book_id=book.id)
-           .filter(LDatabase.Reservation.expiration_date >= now)).first()
+             .filter(LDatabase.Reservation.expiration_date >= now)).first()
     if exist:
         flash("Книга уже забронирована")
         return redirect(url_for('dashboard'))
@@ -236,6 +281,7 @@ def reserve_book():
 
     flash(f"Книга {book.title} успешно забронирована вами. Заберите её до {reservation.expiration_date}")
     return redirect(url_for('dashboard'))
+
 
 @app.route('/cancel_reserve', methods=['POST'])
 @login_required
@@ -260,7 +306,6 @@ def cancel_reserve():
 # TODO: Сделать взаимодействие с книгами через QR код (http://qrcoder.ru)
 
 # TODO: Поменять взаимодействие с книгами на более практичный (не по названию)
-
 
 
 if __name__ == '__main__':
