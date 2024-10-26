@@ -30,3 +30,22 @@ button:disabled {
 h1, h2 {
     color: #333;
 }
+
+.book-container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.book-author .book-status {
+    margin-top: 10px;
+}
+
+a {
+    display: inline-block;
+    margin-top: 20px;
+    text-decoration: none;
+    color: #007BFF;
+}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Админ панель
+{% endblock %}
+
+{% block body %}
+    {% if is_admin %}
+        <h1>Админ панель</h1>
+        <a href="{{ url_for('books') }}"><button>Книги</button></a>
+        <a href="{{ url_for('admin_users') }}"><button>Пользователи</button></a>
+        <h2>Выдать книгу</h2>
+        <form method="POST" action="{{ url_for('issue_book') }}">
+            <input type="text" name="id" placeholder="ID книги" required>
+            <input type="text" name="username" placeholder="Логин пользователя" required>
+            <input type="number" name="due_days" placeholder="Количество дней на чтение" value="7" required>
+            <button type="submit">Выдать книгу</button>
+        </form>
+
+        <h2>Возврат книги</h2>
+        <form method="POST" action="{{ url_for('return_book') }}">
+            <input type="number" name="book_id" placeholder="ID книги" required>
+            <button type="submit">Вернуть книгу</button>
+        </form>
+
+        <h2>Добавить книгу</h2>
+        <form method="POST" action="{{ url_for('add_book') }}">
+            <input type="text" name="title" placeholder="Название книги" required>
+            <input type="text" name="author" placeholder="Автор" required>
+            <button type="submit">Добавить книгу</button>
+        </form>
+
+        <h2>Удалить книгу</h2>
+        <form method="POST" action="{{ url_for('delete_book') }}">
+            <input type="text" name="title" placeholder="Название книги" required>
+            <button type="submit">Удалить книгу</button>
+        </form>
+    {% else %}
+        <p>У вас нет доступа!</p>
+    {% endif %}
+
+<a href="{{ url_for('dashboard') }}"><button>Личный кабинет</button></a>
+{% endblock %}

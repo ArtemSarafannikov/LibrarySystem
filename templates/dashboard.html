@@ -16,7 +16,7 @@
 {% else %}
     <ul>
         {% for i in range(user_books|length) %}
-            <li>{{ user_books[i].book.title }} - {{ user_books[i].book.author }}
+            <li><a href="{{ url_for('book_info', book_id=user_books[i].book.id) }}">{{ user_books[i].book.title }} - {{ user_books[i].book.author }}</a>
                 {% if due_days[i] < 0 %}
                     (Просрочено на <font color="red"><b>{{ -due_days[i] }} дней</b></font>)
                 {% else %}
@@ -31,7 +31,7 @@
 {% else %}
     <ul>
         {% for reserved_book in reserved_books %}
-            <li><b>{{ reserved_book.book.title }} - {{ reserved_book.author }}</b> забронирована до {{ reserved_book.expiration_date}} (Осталось {{ (reserved_book.expiration_date - now_date).days }} дня)
+        <li><a href="{{ url_for('book_info', book_id=reserved_book.book.id) }}"><b>{{ reserved_book.book.title }} - {{ reserved_book.author }}</b></a> забронирована до {{ reserved_book.expiration_date}} (Осталось {{ (reserved_book.expiration_date - now_date).days }} дня)
                 <form method="POST" action="{{ url_for('cancel_reserve') }}">
                 <input type="hidden" name=reservation_id value="{{ reserved_book.id }}">
                 <button type="submit">Отменить бронь</button>
@@ -55,35 +55,10 @@
 <!--{% endwith %}-->
 
 {% if is_admin %}
-    <h1>Админ панель</h1>
-    <h2>Выдать книгу</h2>
-    <form method="POST" action="{{ url_for('issue_book') }}">
-        <input type="text" name="title" placeholder="Название книги" required>
-        <input type="text" name="username" placeholder="Логин пользователя" required>
-        <input type="number" name="due_days" placeholder="Количество дней на чтение" value="7" required>
-        <button type="submit">Выдать книгу</button>
-    </form>
-
-    <h2>Возврат книги</h2>
-    <form method="POST" action="{{ url_for('return_book') }}">
-        <input type="number" name="book_id" placeholder="ID книги" required>
-        <button type="submit">Вернуть книгу</button>
-    </form>
-
-    <h2>Добавить книгу</h2>
-    <form method="POST" action="{{ url_for('add_book') }}">
-        <input type="text" name="title" placeholder="Название книги" required>
-        <input type="text" name="author" placeholder="Автор" required>
-        <button type="submit">Добавить книгу</button>
-    </form>
-
-    <h2>Удалить книгу</h2>
-    <form method="POST" action="{{ url_for('delete_book') }}">
-        <input type="text" name="title" placeholder="Название книги" required>
-        <button type="submit">Удалить книгу</button>
-    </form>
+    <a href="{{ url_for('admin') }}"><button>Админ панель</button></a>
 {% endif %}
 
+<a href="{{ url_for('books') }}"><button>Книги</button></a>
 <a href="{{ url_for('logout') }}"><button>Выйти</button></a>
 
 {% endblock %}

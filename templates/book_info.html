@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{{ book.title }} - {{ book.author }}
+{% endblock %}
+
+{% block body %}
+<div class="book-container">
+    <h1>{{ book.title }}</h1>
+    <p class="book-author"><strong>Автор: </strong> {{ book.author }}</p>
+    {% if book.available %}
+        <p class="book-status" style="color: green;"><strong>Статус: </strong>Доступна для выдачи</p>
+    {% else %}
+        <p class="book-status" style="color: red;"><strong>Статус: </strong>Недоступна</p>
+    {% endif %}
+
+    {% if current_user.is_admin %}
+        <h1>Управление книгой</h1>
+            {% if book.available %}
+                <form method="POST" action="{{ url_for('issue_book') }}">
+                    <input type="hidden" name="id" value="{{ book.id }}" required>
+                    <input type="text" name="username" placeholder="Логин пользователя" required>
+                    <input type="number" name="due_days" placeholder="Количество дней на чтение" value="7" required>
+                    <button type="submit">Выдать книгу</button>
+                </form>
+            {% else %}
+                <form method="POST" action="{{ url_for('return_book') }}">
+                    <input type="hidden" name="book_id" value="{{ book.id }}" required>
+                    <button type="submit">Вернуть книгу</button>
+                </form>
+            {% endif %}
+
+        <h1>История использования</h1>
+        <ul>
+            {% for row in history %}
+                <li><a href="{{ url_for('admin_users', user_id=row.user.id) }}">{{ row.user.username }}</a>
+                    <p><strong>Взял: </strong>{{ row.issue_date }}</p>
+                    <p><strong>Вернул: </strong>
+                        {% if row.return_date  %}
+                            {% if (row.deadline_date - row.return_date).days < 0 %}
+                                <font color="red">
+                                    {{ row.return_date }}
+                                </font>
+                            {% else %}
+                                {{ row.return_date }}
+                            {% endif %}
+                        {% else %}
+                            ?
+                        {% endif %}
+                    </p>
+                    <p><strong>Дедлайн: </strong>{{ row.deadline_date }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}
