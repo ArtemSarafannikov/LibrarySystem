@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{{ user.username }}
+{% endblock %}
+
+{% block body %}
+<div class="book-container">
+    <h1>{{ user.username }}</h1>
+    <p class="book-author"><strong>Размер штрафа: </strong> {{ user.fines }}</p>
+    {% if user.is_admin %}
+        <p class="book-status" style="color: red;"><strong>Администратор</strong></p>
+    {% else %}
+        <p class="book-status" style="color: green;"><strong>Обычный пользователь</strong></p>
+    {% endif %}
+
+    {% if current_user.is_admin %}
+        <h1>Книги на руках</h1>
+        <ul>
+            {% for row in history %}
+                {% if not row.return_date %}
+                    <li><a href="{{ url_for('book_info', book_id=row.book_id) }}">{{ row.book.title }}</a>
+                        {% if (row.deadline_date - now_date).days < 0 %}
+                            <p><strong style="color: red;">Просрочено</strong></p>
+                        {% else %}
+                            <p><strong>Осталось: </strong>{{ (row.deadline_date - now_date).days }} дней</p>
+                        {% endif %}
+                        <p><strong>Взял: </strong>{{ row.issue_date }}</p>
+                        <p><strong>Дедлайн: </strong>{{ row.deadline_date }}</p>
+                        <form method="POST" action="{{ url_for('return_book') }}">
+                            <input type="hidden" name="book_id" value="{{ row.book_id }}" required>
+                            <button type="submit">Вернуть книгу</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('change_deadline') }}">
+                            <input type="hidden" name="id" value="{{ row.id }}" required>
+                            <input type="date" name="deadline" value="{{ row.deadline_date }}" required>
+                            <button type="submit">Изменить дедлайн</button>
+                        </form>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+        <h1>История использования</h1>
+        <ul>
+            {% for row in history %}
+                {% if row.return_date %}
+                    <li><a href="{{ url_for('book_info', book_id=row.book_id) }}">{{ row.book.title }}</a>
+                        <p><strong>Взял: </strong>{{ row.issue_date }}</p>
+                        <p><strong>Вернул: </strong>
+                            {% if row.return_date  %}
+                                {% if (row.deadline_date - row.return_date).days < 0 %}
+                                    <font color="red">
+                                        {{ row.return_date }}
+                                    </font>
+                                {% else %}
+                                    {{ row.return_date }}
+                                {% endif %}
+                            {% else %}
+                                ?
+                            {% endif %}
+                        </p>
+                        <p><strong>Дедлайн: </strong>{{ row.deadline_date }}</p>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

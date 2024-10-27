@@ -40,6 +40,6 @@
             <button type="submit" {% if num_of_pages <= page %} disabled {% endif %}>Вперед</button>
         </form>
     </div>
-    <a href="{{ url_for('dashboard') }}"><button>Личный кабинет</button></a>
 </ul>
+<a href="{{ url_for('dashboard') }}"><button>Личный кабинет</button></a>
 {% endblock %}

@@ -132,9 +132,13 @@ def books():
 def book_info(book_id):
     book = LDatabase.Books.query.get_or_404(book_id)
     history = LDatabase.UsersBooks.query.filter_by(book_id=book_id).join(LDatabase.Users).all()
+    reserved = (LDatabase.Reservation.query.
+                  filter((LDatabase.Reservation.book_id == book_id) &
+                         (LDatabase.Reservation.expiration_date >= date.today())).first())
     return render_template('book_info.html',
                            book=book,
-                           history=history)
+                           history=history,
+                           reserved=reserved)
 
 
 # Функция для отображения личного кабинета
@@ -229,7 +233,7 @@ def issue_book():
 
     # Берем данные о названии книги и о пользователе
     book_id = request.form['id']
-    username = request.form['username']
+    user_id = request.form.get('user_id', -1, type=int)
 
     book = LDatabase.Books.query.get_or_404(book_id)
     # Если книги не существует в базе, то выводим ошибку
@@ -242,8 +246,12 @@ def issue_book():
         flash('Книга недоступна')
         return redirect(url_for('dashboard'))
 
-    # Получаем информацию о пользователе
-    user = LDatabase.Users.query.filter_by(username=username).first()
+    if user_id == -1:
+        username = request.form['username']
+        # Получаем информацию о пользователе
+        user = LDatabase.Users.query.filter_by(username=username).first()
+    else:
+        user = LDatabase.Users.query.get_or_404(user_id)
     # Если пользователь не найден, то выводим ошибку
     if not user:
         flash('Пользователь не найден')
@@ -252,11 +260,10 @@ def issue_book():
     # Получаем информацию о бронировании
     now = datetime.utcnow()
     reservation = (LDatabase.Reservation.query.filter_by(book_id=book.id)
-                   .filter(
-        (LDatabase.Reservation.expiration_date >= now) & (LDatabase.Reservation.user_id != user.id))).first()
+                   .filter((LDatabase.Reservation.expiration_date >= now)).first())
 
     # Если забронирована, то выводим ошибку
-    if reservation:
+    if reservation and reservation.user_id != user.id:
         flash(f"Книга забронирована пользователем {reservation.user.username}")
         return redirect(url_for('dashboard'))
 
@@ -264,6 +271,9 @@ def issue_book():
     if user.fines >= 5000:
         flash(f"Штраф пользователя составляет {user.fines}. Он не может брать книги, пока его не оплатит")
         return redirect(url_for('dashboard'))
+
+    if reservation:
+        reservation.expiration_date = date.today() - timedelta(days=1)
 
     # Если все условия соблюдены, то вешаем книгу на пользователя
     book.available = False
@@ -366,21 +376,47 @@ def admin():
 @app.route('/admin/users/')
 @login_required
 def admin_users():
-    return "qwe"
+    query = request.args.get('q', '')
+    if query:
+        users = LDatabase.Users.query.filter(LDatabase.Users.username.like(f"%{query}%")).all()
+    else:
+        users = LDatabase.Users.query.all()
+    return render_template('admin_users.html', users=users)
 
 
 @app.route('/admin/users/<int:user_id>')
 @login_required
 def admin_user_info(user_id):
-    return "qwe"
+    update_fines(user_id)
+    user = LDatabase.Users.query.get_or_404(user_id)
+    history = LDatabase.UsersBooks.query.filter_by(user_id=user_id).join(LDatabase.Books).all()
+    return render_template('admin_user_info.html',
+                           user=user,
+                           history=history,
+                           now_date=date.today())
 
-# TODO: Добавить возможность админу просмотра страниц пользователя и книжки (вместе с этим возможность менять срок сдачи т. д.)
 
-# TODO: Общая статистика (общая задолженность, сколько книг на руках и т.д.)
+@app.route('/change_deadline', methods=['POST'])
+@login_required
+def change_deadline():
+    if current_user.is_admin:
+        deadline = request.form['deadline']
+        id = request.form['id']
+        user_book = LDatabase.UsersBooks.query.get_or_404(id)
+        user_book.deadline_date = deadline
+        db.session.commit()
+    else:
+        flash('У вас нет доступа')
+    return redirect(url_for('dashboard'))
 
-# TODO: Сделать взаимодействие с книгами через QR код (http://qrcoder.ru)
 
-# TODO: Поменять взаимодействие с книгами на более практичный (не по названию)
+# TODO: Сделать регистрацию с подтверждением аккаунта
+
+# TODO: Общая статистика (общая задолженность, сколько книг на руках и т.д.) в Excel
+
+# TODO: Сделать взаимодействие с книгами через QR код (https://goqr.me/api/)
+
+# TODO: Красивый интерфейс
 
 
 if __name__ == '__main__':
