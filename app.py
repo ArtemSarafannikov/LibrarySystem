@@ -1,10 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import login_user, logout_user, LoginManager, login_required, login_user, current_user
 from sqlalchemy import text
+from sqlalchemy.orm import joinedload
 from models.database import db, LDatabase
 from models import BookModel
 from datetime import datetime, date, timedelta
 from math import ceil
+import pandas as pd
+from io import BytesIO
 
 FINES_PER_DAY = 100
 ELEMENTS_PER_PAGE = 10
@@ -60,6 +63,27 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        existing_user = LDatabase.Users.query.filter(LDatabase.Users.username == username).first()
+        if existing_user:
+            flash("Пользователь с таким email или username уже существует")
+            return redirect(url_for('register'))
+
+        new_user = LDatabase.Users(username=username,
+                                   password=password,
+                                   is_confirmed=False)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Регистрация прошла успешно, ожидайте подтверждения администраторами')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+
 # Функция авторизации
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
@@ -68,7 +92,7 @@ def login():
         query = request.args.get('next', '')
         username = request.form['username']
         password = request.form['password']
-        user = LDatabase.Users.query.filter_by(username=username).first()
+        user = LDatabase.Users.query.filter_by(username=username, is_confirmed=True).first()
         if user and user.password == password:
             login_user(user)
             if not query:
@@ -76,7 +100,7 @@ def login():
             else:
                 return redirect(query)
         else:
-            flash('Неверный логин или пароль')
+            flash('Неверный логин или пароль или аккаунт не подтвержден')
     return render_template('login.html')
 
 
@@ -370,12 +394,16 @@ def cancel_reserve():
 @app.route('/admin/')
 @login_required
 def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
     return render_template('admin.html', is_admin=current_user.is_admin)
 
 
 @app.route('/admin/users/')
 @login_required
 def admin_users():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
     query = request.args.get('q', '')
     if query:
         users = LDatabase.Users.query.filter(LDatabase.Users.username.like(f"%{query}%")).all()
@@ -387,6 +415,8 @@ def admin_users():
 @app.route('/admin/users/<int:user_id>')
 @login_required
 def admin_user_info(user_id):
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
     update_fines(user_id)
     user = LDatabase.Users.query.get_or_404(user_id)
     history = LDatabase.UsersBooks.query.filter_by(user_id=user_id).join(LDatabase.Books).all()
@@ -396,7 +426,7 @@ def admin_user_info(user_id):
                            now_date=date.today())
 
 
-@app.route('/change_deadline', methods=['POST'])
+@app.route('/admin/change_deadline', methods=['POST'])
 @login_required
 def change_deadline():
     if current_user.is_admin:
@@ -410,9 +440,71 @@ def change_deadline():
     return redirect(url_for('dashboard'))
 
 
-# TODO: Сделать регистрацию с подтверждением аккаунта
+@app.route('/admin/confirm_user', methods=['POST'])
+@login_required
+def confirm_user():
+    if current_user.is_admin:
+        id = request.form['user_id']
+        user = LDatabase.Users.query.get_or_404(id)
+        user.is_confirmed = True
+        db.session.commit()
+    else:
+        flash('У вас нет доступа')
+    return redirect(url_for('admin_users'))
 
-# TODO: Общая статистика (общая задолженность, сколько книг на руках и т.д.) в Excel
+
+@app.route('/admin/statistic')
+@login_required
+def admin_statistic():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+
+    total_fines = db.session.query(db.func.sum(LDatabase.Users.fines)).scalar()
+    total_books_on_loan = LDatabase.Books.query.filter_by(available=False).count()
+    books = (db.session.query(LDatabase.UsersBooks).filter_by(return_date=None)
+             .join(LDatabase.Users)
+             .join(LDatabase.Books).options(
+                    joinedload(LDatabase.UsersBooks.user),
+                    joinedload(LDatabase.UsersBooks.book)
+    ).all())
+
+    return render_template('admin_statistic.html',
+                           total_fines=total_fines,
+                           total_books_on_loan=total_books_on_loan,
+                           books_on_loan=books)
+
+
+@app.route('/admin/statistic/export')
+@login_required
+def export_statistic():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+
+    books = (db.session.query(LDatabase.UsersBooks).filter_by(return_date=None)
+             .join(LDatabase.Users)
+             .join(LDatabase.Books).options(
+        joinedload(LDatabase.UsersBooks.user),
+        joinedload(LDatabase.UsersBooks.book)
+    ).all())
+
+    data = []
+    for record in books:
+        data.append({
+            'username': record.user.username,
+            'book_title': record.book.title,
+            'deadline': record.deadline_date,
+        })
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Книги на руках')
+    output.seek(0)
+    return send_file(output,
+                     as_attachment=True,
+                     download_name=f'library_statistic_{datetime.now()}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
 
 # TODO: Сделать взаимодействие с книгами через QR код (https://goqr.me/api/)
 

@@ -9,6 +9,7 @@
         <h1>Админ панель</h1>
         <a href="{{ url_for('books') }}"><button>Книги</button></a>
         <a href="{{ url_for('admin_users') }}"><button>Пользователи</button></a>
+        <a href="{{ url_for('admin_statistic') }}"><button>Статистика</button></a>
         <h2>Выдать книгу</h2>
         <form method="POST" action="{{ url_for('issue_book') }}">
             <input type="text" name="id" placeholder="ID книги" required>

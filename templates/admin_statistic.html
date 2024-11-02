@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Статистика
+{% endblock %}
+
+{% block body %}
+    <h1>Статистика</h1>
+    <p><strong>Общая задолженность:</strong> {{ total_fines or 0 }} рублей</p>
+    <p><strong>Количество книг на руках:</strong> {{ total_books_on_loan or 0 }}</p>
+
+    <h2>Список книг на руках</h2>
+    <table border="1">
+        <tr>
+            <th>Пользователь</th>
+            <th>Название книги</th>
+            <th>Дедлайн</th>
+        </tr>
+        {% for book_data in books_on_loan %}
+            <tr>
+                <td>{{ book_data.user.username }}</td>
+                <td><a href="{{ url_for('book_info', book_id=book_data.book_id) }}">{{ book_data.book.title }}</a></td>
+                <td>{{ book_data.deadline_date }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <form action="{{ url_for('export_statistic') }}" method="GET">
+        <button type="submit">Эксопртировать в Excel</button>
+    </form>
+
+    <a href="{{ url_for('admin') }}"><button>Назад в админ панель</button></a>
+{% endblock %}

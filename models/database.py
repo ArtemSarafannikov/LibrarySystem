@@ -13,6 +13,7 @@ class LDatabase:
         password = db.Column(db.String(150), nullable=False)
         fines = db.Column(db.Float, default=0.0)
         is_admin = db.Column(db.Boolean, default=False)
+        is_confirmed = db.Column(db.Boolean, default=False)
 
     class Books(db.Model):
         id = db.Column(db.Integer, primary_key=True)
