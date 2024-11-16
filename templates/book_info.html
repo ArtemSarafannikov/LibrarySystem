@@ -7,7 +7,10 @@
 {% block body %}
 <div class="book-container">
     <h1>{{ book.title }}</h1>
-<!--    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Example">-->
+    <img src="{{ book.cover_url }}" alt="Обложка книги" style="width: 200px; height:auto;">
+    {% if current_user.is_admin %}
+        <img src="{{ url_for('generate_qr_code', book_id=book.id) }}" alt="QR Code" style="width: 200px; height:auto;">
+    {% endif %}
     <p class="book-author"><strong>Автор: </strong> {{ book.author }}</p>
     {% if not book.available %}
         <p class="book-status" style="color: red;"><strong>Статус: </strong>Недоступна</p>

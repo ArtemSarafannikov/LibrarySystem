@@ -1,6 +1,7 @@
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
+from hashlib import sha256
 
 
 db = SQLAlchemy()
@@ -21,6 +22,8 @@ class LDatabase:
         author = db.Column(db.String(100), nullable=False)
         available = db.Column(db.Boolean, default=True)
         due_days = db.Column(db.Integer, nullable=False, default=7)
+        cover_url = db.Column(db.String())
+        qr_crypt = db.Column(db.String(), nullable=False, default=sha256(f"{id}{title}".encode()))
 
 
     class Reservation(db.Model):

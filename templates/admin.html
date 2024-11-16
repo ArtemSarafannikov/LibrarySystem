@@ -25,9 +25,10 @@
         </form>
 
         <h2>Добавить книгу</h2>
-        <form method="POST" action="{{ url_for('add_book') }}">
+        <form method="POST" action="{{ url_for('add_book') }}" enctype="multipart/form-data">
             <input type="text" name="title" placeholder="Название книги" required>
             <input type="text" name="author" placeholder="Автор" required>
+            <input type="file" name="file" required>
             <button type="submit">Добавить книгу</button>
         </form>
 

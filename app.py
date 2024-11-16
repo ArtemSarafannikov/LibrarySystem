@@ -1,5 +1,8 @@
+import io
+
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_login import login_user, logout_user, LoginManager, login_required, login_user, current_user
+from werkzeug.utils import secure_filename
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from models.database import db, LDatabase
@@ -8,6 +11,9 @@ from datetime import datetime, date, timedelta
 from math import ceil
 import pandas as pd
 from io import BytesIO
+import boto3
+import uuid
+import qrcode
 
 FINES_PER_DAY = 100
 ELEMENTS_PER_PAGE = 10
@@ -15,6 +21,21 @@ ELEMENTS_PER_PAGE = 10
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'library_system_12354'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost:5433/library'
+
+S3_ENDPOINT_URL = 'http://localhost:8000'
+S3_BUCKET_BOOK_COVER = 'book-covers'
+
+s3_client = boto3.client(
+    's3',
+    endpoint_url=S3_ENDPOINT_URL,
+    aws_access_key_id='accessKey1',
+    aws_secret_access_key='verySecretKey1'
+)
+
+try:
+    s3_client.create_bucket(Bucket=S3_BUCKET_BOOK_COVER)
+except Exception as e:
+    print(f"Ошибка при создании бакета: {e}")
 
 db.init_app(app)
 login_manager = LoginManager()
@@ -151,6 +172,28 @@ def books():
                            num_of_pages=pages)
 
 
+@app.route('/books/<int:book_id>/qrcode')
+@login_required
+def generate_qr_code(book_id):
+    book = LDatabase.Books.query.get_or_404(book_id)
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(book.qr_crypt)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color='black', back_color='white')
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype='image/png')
+
+
 @app.route('/books/<int:book_id>')
 @login_required
 def book_info(book_id):
@@ -159,6 +202,7 @@ def book_info(book_id):
     reserved = (LDatabase.Reservation.query.
                   filter((LDatabase.Reservation.book_id == book_id) &
                          (LDatabase.Reservation.expiration_date >= date.today())).first())
+
     return render_template('book_info.html',
                            book=book,
                            history=history,
@@ -223,7 +267,24 @@ def add_book():
     else:
         title = request.form['title']
         author = request.form['author']
-        new_book = LDatabase.Books(title=title, author=author)
+        file = request.files['file']
+        cover_url = None
+
+        if file:
+            filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+            try:
+                s3_client.upload_fileobj(
+                    file,
+                    S3_BUCKET_BOOK_COVER,
+                    filename,
+                    ExtraArgs={'ContentType': file.content_type, 'ACL': 'public-read'}
+                )
+                cover_url = f"{S3_ENDPOINT_URL}/{S3_BUCKET_BOOK_COVER}/{filename}"
+            except Exception as e:
+                flash(f"Ошибка при загрузке обложки: {e}")
+                return redirect(url_for('dashboard'))
+
+        new_book = LDatabase.Books(title=title, author=author, cover_url=cover_url)
         db.session.add(new_book)
         db.session.commit()
     return redirect(url_for('dashboard'))
