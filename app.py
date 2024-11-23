@@ -1,6 +1,4 @@
-import io
-
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_login import login_user, logout_user, LoginManager, login_required, login_user, current_user
 from werkzeug.utils import secure_filename
 from sqlalchemy import text
@@ -187,7 +185,7 @@ def generate_qr_code(book_id):
     qr.make(fit=True)
 
     img = qr.make_image(fill_color='black', back_color='white')
-    img_io = io.BytesIO()
+    img_io = BytesIO()
     img.save(img_io, 'PNG')
     img_io.seek(0)
 
@@ -567,7 +565,36 @@ def export_statistic():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
-# TODO: Сделать взаимодействие с книгами через QR код (https://goqr.me/api/)
+@app.route('/scan', methods=['GET', 'POST'])
+def scan_qr():
+    if request.method == 'POST':
+        qr_data = request.form.get('qr_data')
+        if not qr_data:
+            flash('QR-код не распознан')
+            return redirect(url_for('dashboard'))
+
+        book = LDatabase.Books.query.filter_by(qr_crypt=qr_data).first()
+        if not book:
+            flash('QR-код не распознан')
+            return redirect(url_for('dashboard'))
+        return redirect(url_for('book_info', book_id=book.id))
+    return render_template('scan.html')
+
+@app.route('/scan/get_url', methods=['POST'])
+def get_qr_url():
+    data = {}
+    qr_data = request.json.get('qr_data')
+    if not qr_data:
+        data['error'] = 'qr_data не указан'
+
+    book = LDatabase.Books.query.filter_by(qr_crypt=qr_data).first()
+    if not book:
+        data['error'] = 'QR-код не распознан'
+    else:
+        data['url'] = url_for('book_info', book_id=book.id)
+
+    return jsonify(data)
+
 
 # TODO: Красивый интерфейс
 

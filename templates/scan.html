@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Сканирование QR
+{% endblock %}
+
+{% block body %}
+    <h1>Сканировать QR-код</h1>
+    <div id="reader" style="width: 500px;"></div>
+    <p id="result"></p>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            document.getElementById("qr_data").value = decodedText;
+
+            fetch('/scan/get_url', {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ qr_data: decodedText})
+            })
+            .then((response) => response.json())
+            .then((json) => window.location.href = json['url']);
+        }
+
+        function onScanFailure(error) {
+            console.warn(`QR Code scan failed: ${error}`)
+        }
+
+        let qrCodeScanner = new Html5QrcodeScanner(
+            "reader",
+            {
+                fps: 10,
+                qrbox: {width: 250, height: 250}
+            },
+            false
+        );
+        qrCodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
+
+    <form method="POST" action="{{ url_for('scan_qr') }}">
+        <label for="qr_data">Вставьте данные QR</label><br>
+        <input type="text" id="qr_data" name="qr_data" required><br>
+        <button type="submit">Перейти к книге</button>
+    </form>
+{% endblock %}

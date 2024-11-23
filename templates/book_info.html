@@ -17,6 +17,10 @@
     {% elif reserved %}
         <p class="book-status" style="color: blue;"><strong>Статус: </strong>Забронирована до {{ reserved.expiration_date }}</p>
     {% else %}
+        <form method="POST" action="{{ url_for('reserve_book') }}">
+            <input type="hidden" name=book_id value="{{ book.id }}">
+            <button type="submit">Забронировать</button>
+        </form>
         <p class="book-status" style="color: green;"><strong>Статус: </strong>Доступна для выдачи</p>
     {% endif %}
 
