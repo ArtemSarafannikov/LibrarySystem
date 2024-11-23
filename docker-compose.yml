@@ -1,0 +1,47 @@
+version '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: library_system_app
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/library
+      S3_ENDPOINT_URL: http://s3:8000
+      S3_ACCESS_KEY: accessKey1
+      S3_SECRET_KEY: verySecretKey1
+      S3_BUCKET_BOOK_COVER: book-covers
+    depends_on:
+      - db
+      - s3
+  
+  db:
+    image: postgres:16.1
+    container_name: library_system_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: library
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  s3:
+    image: scality/s3server
+    container_name: librar_system_s3
+    ports:
+      - "8000:8000"
+    environment:
+      SCALITY_ACCESS_KEY_ID: accessKey1
+      SCALITY_SECRET_ACCESS_KEY: verySecretKey1
+    volumes:
+      - scality_data:/data
+      
+volumes:
+  postgres_data:
+  scality_data:
+      

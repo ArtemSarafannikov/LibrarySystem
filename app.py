@@ -12,22 +12,24 @@ from io import BytesIO
 import boto3
 import uuid
 import qrcode
+import os
 
 FINES_PER_DAY = 100
 ELEMENTS_PER_PAGE = 10
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'library_system_12354'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost:5433/library'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-S3_ENDPOINT_URL = 'http://localhost:8000'
-S3_BUCKET_BOOK_COVER = 'book-covers'
+S3_ENDPOINT_URL = os.getenv('S3_ENDPOINT_URL')
+S3_BUCKET_BOOK_COVER = os.getenv('S3_BUCKET_BOOK_COVER')
 
 s3_client = boto3.client(
     's3',
     endpoint_url=S3_ENDPOINT_URL,
-    aws_access_key_id='accessKey1',
-    aws_secret_access_key='verySecretKey1'
+    aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
+    aws_secret_access_key=os.getenv('verySecretKey1')
 )
 
 try:
@@ -36,6 +38,9 @@ except Exception as e:
     print(f"Ошибка при создании бакета: {e}")
 
 db.init_app(app)
+with app.app_context():
+    db.create_all()
+    
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'

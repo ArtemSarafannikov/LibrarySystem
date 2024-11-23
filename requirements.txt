@@ -1,0 +1,9 @@
+Flask==3.0.3
+Flask-Login==0.6.3
+Flask-Migrate==4.0.7
+Flask-SQLAlchemy==3.1.1
+boto3==1.35.63
+pandas==2.2.3
+psycopg2-binary==2.9.9
+qrcode==8.0
+XlsxWriter==3.2.0
