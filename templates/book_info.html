@@ -7,7 +7,7 @@
 {% block body %}
 <div class="book-container">
     <h1>{{ book.title }}</h1>
-    <img src="{{ book.cover_url }}" alt="Обложка книги" style="width: 200px; height:auto;">
+    <img src="{{ s3_endpoint + book.cover_url }}" alt="Обложка книги" style="width: 200px; height:auto;">
     {% if current_user.is_admin %}
         <img src="{{ url_for('generate_qr_code', book_id=book.id) }}" alt="QR Code" style="width: 200px; height:auto;">
     {% endif %}

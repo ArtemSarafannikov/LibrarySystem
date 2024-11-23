@@ -9,6 +9,7 @@ from datetime import datetime, date, timedelta
 from math import ceil
 import pandas as pd
 from io import BytesIO
+from hashlib import sha256
 import boto3
 import uuid
 import qrcode
@@ -27,7 +28,7 @@ S3_BUCKET_BOOK_COVER = os.getenv('S3_BUCKET_BOOK_COVER')
 
 s3_client = boto3.client(
     's3',
-    endpoint_url=S3_ENDPOINT_URL,
+    endpoint_url=S3_CONNECTION_URL,
     aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
     aws_secret_access_key=os.getenv('S3_SECRET_KEY')
 )
@@ -209,7 +210,8 @@ def book_info(book_id):
     return render_template('book_info.html',
                            book=book,
                            history=history,
-                           reserved=reserved)
+                           reserved=reserved,
+                           s3_endpoint=S3_ENDPOINT_URL)
 
 
 # Функция для отображения личного кабинета
@@ -282,12 +284,12 @@ def add_book():
                     filename,
                     ExtraArgs={'ContentType': file.content_type, 'ACL': 'public-read'}
                 )
-                cover_url = f"{S3_ENDPOINT_URL}/{S3_BUCKET_BOOK_COVER}/{filename}"
+                cover_url = f"{S3_BUCKET_BOOK_COVER}/{filename}"
             except Exception as e:
                 flash(f"Ошибка при загрузке обложки: {e}")
                 return redirect(url_for('dashboard'))
 
-        new_book = LDatabase.Books(title=title, author=author, cover_url=cover_url)
+        new_book = LDatabase.Books(title=title, author=author, cover_url=cover_url, qr_crypt=sha256(f"{id}{title}".encode()).hexdigest())
         db.session.add(new_book)
         db.session.commit()
     return redirect(url_for('dashboard'))
