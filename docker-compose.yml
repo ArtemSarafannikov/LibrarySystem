@@ -10,7 +10,6 @@ services:
       - "5000:5000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/library
-      S3_CONNECTION_URL: http://s3:8000
       S3_ENDPOINT_URL: http://84.201.164.193:8000/
       S3_ACCESS_KEY: accessKey1
       S3_SECRET_KEY: verySecretKey1
