@@ -39,6 +39,7 @@ services:
       SCALITY_ACCESS_KEY_ID: accessKey1
       SCALITY_SECRET_ACCESS_KEY: verySecretKey1
     volumes:
+      - ./devops/scality_s3/config.json:/usr/src/app/config.json
       - scality_data:/data
       
 volumes:
